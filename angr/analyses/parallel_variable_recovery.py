@@ -246,8 +246,7 @@ class ParallelVariableRecovery(MulticoreAnalysisMixin, Analysis):
                 result = _recover_variables(task)
                 self._process_result(result)
                 percentage = (i + 1) / len(tasks) * 100.0
-                func = self.kb.functions.get_by_addr(task["func_addr"])
-                func_name = func.demangled_name if func else f"{task['func_addr']:#x}"
+                func_name = self._get_func_name(task["func_addr"])
                 self._update_progress(percentage, text=f"{i + 1}/{len(tasks)} - {func_name}")
         else:
             # Parallel execution
@@ -262,8 +261,7 @@ class ParallelVariableRecovery(MulticoreAnalysisMixin, Analysis):
                 for i, result in enumerate(pool.imap_unordered(_recover_variables, tasks)):
                     self._process_result(result)
                     percentage = (i + 1) / total * 100.0
-                    func = self.kb.functions.get_by_addr(result["func_addr"])
-                    func_name = func.demangled_name if func else f"{result['func_addr']:#x}"
+                    func_name = self._get_func_name(result["func_addr"])
                     self._update_progress(percentage, text=f"{i + 1}/{total} - {func_name}")
 
         self._finish_progress()
@@ -313,6 +311,14 @@ class ParallelVariableRecovery(MulticoreAnalysisMixin, Analysis):
         :return: Error message, or None if no error
         """
         return self.errors.get(func_addr)
+
+    def _get_func_name(self, func_addr: int) -> str:
+        """Get function name safely, handling non-existent addresses."""
+        try:
+            func = self.kb.functions.get_by_addr(func_addr)
+            return func.demangled_name if func else f"{func_addr:#x}"
+        except KeyError:
+            return f"{func_addr:#x}"
 
 
 register_analysis(ParallelVariableRecovery, "ParallelVariableRecovery")
