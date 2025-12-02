@@ -81,8 +81,11 @@ def _decompile_function(task: dict[str, Any]) -> dict[str, Any]:
             result["error"] = f"Function at {func_addr:#x} not found"
             return result
 
-        # Run decompiler with configured options
+        # Extract our custom options before passing to Decompiler
+        store_in_kb = options.pop("store_in_kb", True)
         cfg = _worker_cfg or options.pop("cfg", None)
+
+        # Run decompiler with configured options
         decompiler = _worker_project.analyses[Decompiler].prep(
             kb=_worker_project.kb,
         )(
@@ -95,7 +98,7 @@ def _decompile_function(task: dict[str, Any]) -> dict[str, Any]:
         result["text"] = decompiler.codegen.text if decompiler.codegen else None
 
         # Store in knowledge base if requested
-        if options.get("store_in_kb", True) and decompiler.codegen:
+        if store_in_kb and decompiler.codegen:
             _worker_project.kb.structured_code[(func_addr, "pseudocode")] = decompiler.codegen
 
     except Exception as e:

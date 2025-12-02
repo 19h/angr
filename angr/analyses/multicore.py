@@ -196,12 +196,17 @@ class ParallelTaskExecutor(Generic[TaskType, ResultType]):
             init_func = self.initializer
             init_args = self.initializer_args
 
+        # Create a wrapper closure that can be pickled
+        # We store the worker_func reference separately to avoid pickling self
+        worker_func = self.worker_func
+
         with ctx.Pool(
             processes=self.config.workers, initializer=init_func, initargs=init_args
         ) as pool:
             # Use imap_unordered for better load balancing
+            # Use a standalone wrapper function to avoid pickling issues with bound methods
             for result in pool.imap_unordered(
-                self._wrap_worker_func, tasks, chunksize=self.config.chunk_size
+                _mp_worker_wrapper, [(worker_func, task) for task in tasks], chunksize=self.config.chunk_size
             ):
                 results.append(result)
                 self._update_progress(result.task_id)
@@ -210,6 +215,21 @@ class ParallelTaskExecutor(Generic[TaskType, ResultType]):
                     break
 
         return results
+
+
+def _mp_worker_wrapper(args: tuple) -> WorkerResult:
+    """
+    Standalone wrapper function for multiprocessing that can be pickled.
+    Takes (worker_func, task) tuple and returns WorkerResult.
+    """
+    worker_func, task = args
+    task_id = id(task) if not hasattr(task, "__hash__") else hash(task)
+    try:
+        result = worker_func(task)
+        return WorkerResult(task_id=task_id, result=result, success=True)
+    except Exception as e:
+        _l.error("Worker error processing task %s: %s", task_id, e, exc_info=True)
+        return WorkerResult(task_id=task_id, error=e, success=False)
 
 
 class MulticoreAnalysisMixin:

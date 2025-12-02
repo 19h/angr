@@ -91,12 +91,18 @@ def _analyze_xrefs(task: dict[str, Any]) -> dict[str, Any]:
             )
             for xref in block_xrefs:
                 # Serialize XRef data for transfer
+                # Note: XRef stores type in .type attribute as an int (XRefType value)
+                xref_type = xref.type
+                if hasattr(xref_type, 'value'):
+                    xref_type = xref_type.value
+                elif xref_type is None:
+                    xref_type = 0
                 xrefs_data.append({
                     "ins_addr": xref.ins_addr,
                     "block_addr": xref.block_addr,
                     "stmt_idx": xref.stmt_idx,
                     "dst": xref.dst,
-                    "xref_type": xref.xref_type.value,
+                    "xref_type": xref_type,
                 })
 
         result["success"] = True
@@ -287,8 +293,6 @@ class ParallelXRefs(MulticoreAnalysisMixin, Analysis):
 
     def _process_result(self, result: dict[str, Any]) -> None:
         """Process a single XRefs analysis result."""
-        from angr.knowledge_plugins.xrefs import XRefType
-
         func_addr = result["func_addr"]
 
         if result["success"]:
@@ -298,12 +302,14 @@ class ParallelXRefs(MulticoreAnalysisMixin, Analysis):
 
             # Import XRefs into main KB
             for xref_data in result["xrefs"]:
+                # XRefType is a class with constants (Offset=0, Read=1, Write=2)
+                # We pass the integer value directly as xref_type
                 xref = XRef(
                     ins_addr=xref_data["ins_addr"],
                     block_addr=xref_data["block_addr"],
                     stmt_idx=xref_data["stmt_idx"],
                     dst=xref_data["dst"],
-                    xref_type=XRefType(xref_data["xref_type"]),
+                    xref_type=xref_data["xref_type"],
                 )
                 self.kb.xrefs.add_xref(xref)
         else:
