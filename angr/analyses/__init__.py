@@ -51,6 +51,20 @@ from .unpacker import PackingDetector
 from .fcp import FastConstantPropagation
 from . import deobfuscator
 
+# Multicore analysis framework
+from .multicore import (
+    MulticoreAnalysisMixin,
+    ParallelAnalysisConfig,
+    ParallelAnalysisManager,
+    ParallelFunctionAnalysisBase,
+    ParallelizationMode,
+    ParallelTaskExecutor,
+    run_parallel_analysis,
+)
+from .parallel_decompiler import ParallelDecompiler
+from .parallel_variable_recovery import ParallelVariableRecovery
+from .parallel_xrefs import ParallelXRefs
+
 
 __all__ = (
     "CDG",
@@ -110,4 +124,15 @@ __all__ = (
     "deobfuscator",
     "register_analysis",
     "visitors",
+    # Multicore analysis framework
+    "MulticoreAnalysisMixin",
+    "ParallelAnalysisConfig",
+    "ParallelAnalysisManager",
+    "ParallelDecompiler",
+    "ParallelFunctionAnalysisBase",
+    "ParallelTaskExecutor",
+    "ParallelVariableRecovery",
+    "ParallelXRefs",
+    "ParallelizationMode",
+    "run_parallel_analysis",
 )
